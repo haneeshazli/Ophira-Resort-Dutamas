@@ -1,32 +1,40 @@
-const header=document.querySelector('.site-header');
-const toggle=document.querySelector('.menu-toggle');
-toggle?.addEventListener('click',()=>{const open=header.classList.toggle('menu-open');toggle.setAttribute('aria-expanded',String(open));toggle.setAttribute('aria-label',open?'Close menu':'Open menu');toggle.textContent=open?'Close':'Menu'});
-header?.querySelectorAll('nav a').forEach(link=>link.addEventListener('click',()=>{header.classList.remove('menu-open');toggle?.setAttribute('aria-expanded','false')}));
-const layoutFilters=document.querySelectorAll('[data-layout-filter]');
-const layoutCards=document.querySelectorAll('.layout-card[data-layout]');
-layoutFilters.forEach(button=>button.addEventListener('click',()=>{const filter=button.dataset.layoutFilter;layoutFilters.forEach(item=>item.setAttribute('aria-pressed',String(item===button)));layoutCards.forEach(card=>{card.hidden=filter!=='all'&&card.dataset.layout!==filter})}));
-const dialog=document.querySelector('.image-dialog');const dialogImage=dialog?.querySelector('img');const dialogCaption=dialog?.querySelector('p');
-document.querySelectorAll('[data-full]').forEach(button=>button.addEventListener('click',()=>{if(!dialog||!dialogImage)return;dialogImage.src=button.dataset.full;dialogImage.alt=button.dataset.caption||'';if(dialogCaption)dialogCaption.textContent=button.dataset.caption||'';dialog.showModal()}));
-dialog?.querySelector('.dialog-close')?.addEventListener('click',()=>dialog.close());
-dialog?.addEventListener('click',event=>{if(event.target===dialog)dialog.close()});
-const carousel=document.querySelector('.hero-carousel');
-const slides=[...(carousel?.querySelectorAll('.hero-image')||[])];
-const dots=[...document.querySelectorAll('.hero-dot')];
-const caption=document.querySelector('#hero-caption');
-const carouselToggle=document.querySelector('[data-carousel-toggle]');
-const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-let currentSlide=0;let userPaused=reducedMotion;let hoverPaused=false;let focusPaused=false;
-const isPaused=()=>userPaused||hoverPaused||focusPaused;
-function updateCarousel(){slides.forEach((slide,index)=>{const active=index===currentSlide;slide.classList.toggle('is-active',active);slide.setAttribute('aria-hidden',String(!active))});dots.forEach((dot,index)=>{const active=index===currentSlide;dot.classList.toggle('is-active',active);dot.setAttribute('aria-current',String(active))});if(caption&&slides[currentSlide])caption.textContent=slides[currentSlide].dataset.caption||'';if(carouselToggle){carouselToggle.textContent=userPaused?'Play':'Pause';carouselToggle.setAttribute('aria-label',userPaused?'Play slideshow':'Pause slideshow');carouselToggle.setAttribute('aria-pressed',String(userPaused))}}
-function showSlide(index){if(!slides.length)return;currentSlide=(index+slides.length)%slides.length;updateCarousel()}
-document.querySelector('[data-carousel-prev]')?.addEventListener('click',()=>showSlide(currentSlide-1));
-document.querySelector('[data-carousel-next]')?.addEventListener('click',()=>showSlide(currentSlide+1));
-dots.forEach((dot,index)=>dot.addEventListener('click',()=>showSlide(index)));
-carouselToggle?.addEventListener('click',()=>{userPaused=!userPaused;updateCarousel()});
-carousel?.addEventListener('mouseenter',()=>{hoverPaused=true;updateCarousel()});
-carousel?.addEventListener('mouseleave',()=>{hoverPaused=false;updateCarousel()});
-carousel?.addEventListener('focusin',()=>{focusPaused=true;updateCarousel()});
-carousel?.addEventListener('focusout',event=>{if(!carousel.contains(event.relatedTarget)){focusPaused=false;updateCarousel()}});
-carousel?.addEventListener('keydown',event=>{if(event.key==='ArrowLeft'){event.preventDefault();showSlide(currentSlide-1)}if(event.key==='ArrowRight'){event.preventDefault();showSlide(currentSlide+1)}});
-if(!reducedMotion&&slides.length>1)setInterval(()=>{if(!isPaused())showSlide(currentSlide+1)},6500);
-updateCarousel();
+const header=document.querySelector('.site-header'),toggle=document.querySelector('.menu-toggle');
+const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
+function menu(open){header.classList.toggle('menu-open',open);toggle.setAttribute('aria-expanded',String(open));toggle.textContent=translate(open?'Close':'Menu');toggle.setAttribute('aria-label',language==='bm'?(open?'Tutup menu':'Buka menu'):(open?'Close menu':'Open menu'))}
+toggle.addEventListener('click',()=>menu(!header.classList.contains('menu-open')));
+header.querySelectorAll('nav a').forEach(a=>a.addEventListener('click',()=>menu(false)));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')menu(false)});
+const filters=[...document.querySelectorAll('[data-layout-filter]')],cards=[...document.querySelectorAll('.layout-card[data-layout]')];
+const result=document.createElement('p');result.className='layout-results';result.setAttribute('role','status');document.querySelector('.layout-filters').after(result);
+function filterLayouts(button){filters.forEach(b=>b.setAttribute('aria-pressed',String(b===button)));cards.forEach(card=>{card.hidden=button.dataset.layoutFilter!=='all'&&card.dataset.layout!==button.dataset.layoutFilter;if(!card.hidden&&!reducedMotion.matches)card.animate([{opacity:0,transform:'translateY(16px)'},{opacity:1,transform:'translateY(0)'}],{duration:400})});const count=cards.filter(c=>!c.hidden).length;result.textContent=language==='bm'?`${count} pelan untuk diterokai`:`${count} layouts to explore`}
+filters.forEach(b=>b.addEventListener('click',()=>filterLayouts(b)));
+const dialog=document.querySelector('.image-dialog'),dialogImage=dialog.querySelector('img'),dialogCaption=dialog.querySelector('p');
+let collection=[],imageIndex=0;
+const dialogNav=document.createElement('div');dialogNav.className='dialog-nav';dialogNav.innerHTML='<button type="button" data-prev></button><span class="image-count"></span><button type="button" data-next></button>';dialog.append(dialogNav);
+function renderImage(){const button=collection[imageIndex];if(!button)return;dialogImage.src=button.dataset.full;dialogImage.alt=button.querySelector('img')?.alt||button.dataset.caption;dialogCaption.textContent=button.classList.contains('photo-card')?button.querySelector('span').textContent:translate(button.dataset.caption);dialogNav.querySelector('[data-prev]').textContent=translate('Prev');dialogNav.querySelector('[data-next]').textContent=translate('Next');dialogNav.querySelector('.image-count').textContent=`${imageIndex+1} / ${collection.length}`}
+function stepImage(n){imageIndex=(imageIndex+n+collection.length)%collection.length;renderImage()}
+document.querySelectorAll('[data-full]').forEach(button=>button.addEventListener('click',()=>{collection=[...document.querySelectorAll(button.classList.contains('photo-card')?'.photo-card':'.layout-card:not([hidden]) .plan-view')];imageIndex=collection.indexOf(button);renderImage();dialog.showModal()}));
+dialog.querySelector('.dialog-close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+dialogNav.querySelector('[data-prev]').addEventListener('click',()=>stepImage(-1));dialogNav.querySelector('[data-next]').addEventListener('click',()=>stepImage(1));
+dialog.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();stepImage(-1)}if(e.key==='ArrowRight'){e.preventDefault();stepImage(1)}});
+const carousel=document.querySelector('.hero-carousel'),slides=[...carousel.querySelectorAll('.hero-image')],dots=[...document.querySelectorAll('.hero-dot')],caption=document.querySelector('#hero-caption'),carouselToggle=document.querySelector('[data-carousel-toggle]');
+let currentSlide=0,userPaused=reducedMotion.matches,hoverPaused=false,focusPaused=false;
+function updateCarousel(){slides.forEach((s,i)=>{s.classList.toggle('is-active',i===currentSlide);s.setAttribute('aria-hidden',String(i!==currentSlide))});dots.forEach((d,i)=>{d.classList.toggle('is-active',i===currentSlide);d.setAttribute('aria-current',String(i===currentSlide))});caption.textContent=translate(slides[currentSlide].dataset.caption);carouselToggle.textContent=translate(userPaused?'Play':'Pause');carouselToggle.setAttribute('aria-label',language==='bm'?(userPaused?'Main tayangan slaid':'Jeda tayangan slaid'):(userPaused?'Play slideshow':'Pause slideshow'));carouselToggle.setAttribute('aria-pressed',String(userPaused))}
+function showSlide(i){currentSlide=(i+slides.length)%slides.length;updateCarousel()}
+document.querySelector('[data-carousel-prev]').addEventListener('click',()=>showSlide(currentSlide-1));document.querySelector('[data-carousel-next]').addEventListener('click',()=>showSlide(currentSlide+1));dots.forEach((d,i)=>d.addEventListener('click',()=>showSlide(i)));carouselToggle.addEventListener('click',()=>{userPaused=!userPaused;updateCarousel()});
+const hero=document.querySelector('.hero');hero.addEventListener('mouseenter',()=>hoverPaused=true);hero.addEventListener('mouseleave',()=>hoverPaused=false);hero.addEventListener('focusin',()=>focusPaused=true);hero.addEventListener('focusout',e=>{if(!hero.contains(e.relatedTarget))focusPaused=false});
+carousel.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();showSlide(currentSlide-1)}if(e.key==='ArrowRight'){e.preventDefault();showSlide(currentSlide+1)}});
+let touchX;hero.addEventListener('touchstart',e=>touchX=e.changedTouches[0].clientX,{passive:true});hero.addEventListener('touchend',e=>{const delta=e.changedTouches[0].clientX-touchX;if(Math.abs(delta)>65)showSlide(currentSlide+(delta<0?1:-1))},{passive:true});
+setInterval(()=>{if(!userPaused&&!hoverPaused&&!focusPaused&&!document.hidden&&!reducedMotion.matches)showSlide(currentSlide+1)},6500);
+reducedMotion.addEventListener('change',()=>{userPaused=reducedMotion.matches;updateCarousel()});
+// Expand facilities to explore each category and its matching photograph.
+const facilityImages=['lap-pool.webp','gym.webp','kids-room.webp','sky-garden.webp'];
+document.querySelectorAll('.facility-list > div').forEach((row,i)=>{const details=document.createElement('details'),summary=document.createElement('summary');summary.append(...row.querySelector('span').childNodes);details.append(summary,row.querySelector('p'));details.open=i===0;row.replaceWith(details);details.addEventListener('toggle',()=>{if(details.open){document.querySelectorAll('.facility-list details').forEach(d=>{if(d!==details)d.open=false});const image=document.querySelector('.lifestyle-image');image.style.backgroundImage=`url('assets/${facilityImages[i]}')`;if(!reducedMotion.matches)image.animate([{opacity:.45},{opacity:1}],{duration:650})}})});
+// One-time scroll reveals preserve visibility if scripting is unavailable.
+if(!reducedMotion.matches&&'IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('is-visible');observer.unobserve(e.target)}}),{threshold:.08});document.querySelectorAll('.section-kicker,.residence-grid,.overview-ribbon,.layout-heading,.layout-card,.benefits-heading,.benefits-grid article,.lifestyle-copy,.location-grid,.gallery-heading,.photo-card,.enquiry-section > *').forEach((el,i)=>{el.classList.add('reveal');el.style.setProperty('--delay',`${i%3*65}ms`);observer.observe(el)})}
+const progress=document.querySelector('.reading-progress');let pending=false;
+function updateScroll(){const max=document.documentElement.scrollHeight-innerHeight;progress.style.transform=`scaleX(${max>0?scrollY/max:0})`;header.classList.toggle('is-scrolled',scrollY>20);pending=false}
+addEventListener('scroll',()=>{if(!pending){requestAnimationFrame(updateScroll);pending=true}},{passive:true});updateScroll();
+const sections=[...document.querySelectorAll('main section[id]')];
+if('IntersectionObserver' in window){const spy=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)header.querySelectorAll('nav a').forEach(a=>{if(a.hash===`#${e.target.id}`)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current')})}),{rootMargin:'-15% 0px -55% 0px'});sections.forEach(s=>spy.observe(s))}
+document.addEventListener('languagechange',()=>{menu(header.classList.contains('menu-open'));updateCarousel();filterLayouts(filters.find(b=>b.getAttribute('aria-pressed')==='true')||filters[0]);if(dialog.open)renderImage()});updateCarousel();filterLayouts(filters[0]);menu(false);

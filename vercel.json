@@ -1,7 +1,12 @@
 {
   "outputDirectory": "dist",
   "framework": null,
-  "buildCommand": null,
-  "installCommand": null,
-  "devCommand": null
+  "buildCommand": "",
+  "installCommand": "",
+  "devCommand": null,
+  "functions": {
+    "api/leads.js": {
+      "maxDuration": 30
+    }
+  }
 }

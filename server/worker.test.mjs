@@ -1,0 +1,7 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {captureLead} from './worker.mjs';
+const lead={id:'d0ce4898-83ca-4d69-89e5-e3881a78cefa',name:'Test Visitor',salary:'3000-5000',occupation:'Engineer',propertyType:'condo',budget:'300000-500000',phone:'+60123456789',whatsapp:false,language:'bm'};
+const req=(data,origin='https://example.test')=>new Request('https://example.test/api/leads',{method:'POST',headers:{'content-type':'application/json',origin},body:JSON.stringify(data)});
+test('writes all fields with bound parameters and explicit WhatsApp preference',async()=>{let saved;const env={DB:{prepare(sql){assert.match(sql,/ON CONFLICT/);return{bind(...args){saved=args;return{async run(){return{success:true}}}}}}}};const r=await captureLead(req(lead),env);assert.equal(r.status,201);assert.equal(saved[1],'Test Visitor');assert.equal(saved[7],0);assert.equal(saved.length,10)});
+test('rejects invalid values before writing',async()=>{for(const patch of [{name:''},{salary:'other'},{phone:'12'},{whatsapp:'yes'},{budget:'other'},{occupation:''},{propertyType:'other'}])assert.equal((await captureLead(req({...lead,...patch}),{})).status,400)});
+test('storage failure is recoverable and never reports success',async()=>assert.equal((await captureLead(req(lead),{})).status,503));
+test('blocks cross-origin submissions and read access',async()=>{assert.equal((await captureLead(req(lead,'https://other.test'),{})).status,403);assert.equal((await captureLead(new Request('https://example.test/api/leads'),{})).status,405)});
